@@ -28,12 +28,13 @@ import socket
 import struct
 import subprocess
 import time
+import random
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from socketserver import ThreadingMixIn
 from typing import TYPE_CHECKING
 
-from tauon.t_modules.t_enums import Backend, PlayingState, StopMode
-from tauon.t_modules.t_extra import Timer
+from tauon.t_modules.t_enums import Backend, PlayingState, StopMode, QueueType
+from tauon.t_modules.t_extra import Timer, TauonQueueItem
 
 try:
 	from zeroconf import ServiceInfo, Zeroconf
@@ -695,6 +696,94 @@ def webserve2(pctl: PlayerCtl, album_art_gen: AlbumArt, tauon: Tauon) -> None:
 					self.send_response(404)
 					self.end_headers()
 					self.wfile.write(b"Invalid parameter")
+
+			# Get synced lyrics if available
+			# Prevents extra api calls to external services, as the lyrics likely already exist
+			elif path.startswith("/api1/synced-lyrics/"):
+				value = path[20:]
+				if value.isdigit() and int(value) in pctl.master_library:
+					track = pctl.get_track(int(value))
+					data = {}
+					data["track_id"] = track.index
+					data["lyrics_text"] = track.synced
+
+					self.send_response(200)
+					self.send_header("Content-type", "application/json")
+					self.end_headers()
+					data = json.dumps(data).encode()
+					self.wfile.write(data)
+				else:
+					self.send_response(404)
+					self.end_headers()
+					self.wfile.write(b"Invalid parameter")
+
+			# Get all currently queued tracks
+			# This isnt great, but its good enough
+			elif path.startswith("/api1/queued-tracks"):
+				tempArray = []
+				for el in pctl.force_queue:
+					tempDict = {}
+					tempDict["track_id"] = el.track_id
+					tempDict["position"] = el.position
+					tempDict["playlist_id"] = el.playlist_id
+					tempDict["type"] = el.type
+					tempDict["album_stage"] = el.album_stage
+					tempDict["uuid_int"] = el.uuid_int
+					tempArray.append(tempDict)
+				
+				data = {}
+				data["queue"] = tempArray
+
+				self.send_response(200)
+				self.send_header("Content-type", "application/json")
+				self.end_headers()
+				data = json.dumps(data).encode()
+				self.wfile.write(data)
+
+			# Add a track into the queue
+			elif path.startswith("/api1/queue-track"):
+				_, args = self.parse_trail(path)
+
+				uuid = random.randrange(1, 100000000)
+				# allow the web request to define a uuid, some may want to for some reason
+				uuid_arg = args.get("uuid")
+				if uuid_arg is not None:
+					uuid = int(uuid)
+
+				pctl.force_queue.append(TauonQueueItem(int(args["track_id"]), int(args["position"]), int(args["playlist_id"]), QueueType.TRACK, 0, uuid, False))
+
+				self.send_response(200)
+				self.send_header("Content-type", "text/plain")
+				self.end_headers()
+
+				self.wfile.write(b"OK")
+
+			# Allow removing from the queue by uuid or track id, allowing for full remote queue management
+			# This is just not good, mostly because i have no idea what im doing / how python would be able to do this better
+			elif path.startswith("/api1/remove-queue-track"):
+				_, args = self.parse_trail(path)
+
+				for item in pctl.force_queue:
+					shouldRemove = False
+					uuid = args.get("uuid")
+					if uuid is not None:
+						if item.uuid_int == int(uuid):
+							shouldRemove = True
+					trackid = args.get("track_id")
+					if trackid is not None:
+						if item.track_id == int(trackid):
+							shouldRemove = True
+
+					if shouldRemove:
+						pctl.force_queue.remove(item)
+				
+				self.send_response(200)
+				self.send_header("Content-type", "text/plain")
+				self.end_headers()
+
+				self.wfile.write(b"OK")
+
+
 
 			# elif path.startswith("/api1/stream/"):
 			# param = path[13:]
