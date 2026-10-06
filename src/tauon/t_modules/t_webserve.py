@@ -29,6 +29,7 @@ import struct
 import subprocess
 import time
 import random
+import datetime
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from socketserver import ThreadingMixIn
 from typing import TYPE_CHECKING
@@ -1097,6 +1098,7 @@ def webserve2(pctl: PlayerCtl, album_art_gen: AlbumArt, tauon: Tauon) -> None:
 					"repeat": pctl.repeat_mode is True,
 					"album_repeat": pctl.album_repeat_mode is True,
 					"progress": 0,
+					"event_time": round(datetime.datetime.utcnow().timestamp() * 1000),
 					"auto_stop": tauon.pctl.stop_mode != StopMode.OFF,
 					"volume": pctl.player_volume,
 					"playlist": str(tauon.get_playing_playlist_id()),
