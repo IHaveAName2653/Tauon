@@ -3329,6 +3329,13 @@ class PlayerCtl:
 
 		return line
 
+	def get_track_title(self, track: TrackClass) -> str:
+		if track:
+			title = track.title or ""
+			if title:
+				return title
+			return filename_to_metadata(clean_string(track.filename))[1]
+
 	def show(self) -> int | None:
 		if not self.track_queue:
 			return 0

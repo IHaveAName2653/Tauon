@@ -962,6 +962,7 @@ def webserve2(pctl: PlayerCtl, album_art_gen: AlbumArt, tauon: Tauon) -> None:
 									break
 								p -= 1
 							data["album_id"] = p
+							data["display_title"] = pctl.get_track_title(track)
 
 							self.send_response(200)
 							self.send_header("Content-type", "application/json")
@@ -1106,6 +1107,7 @@ def webserve2(pctl: PlayerCtl, album_art_gen: AlbumArt, tauon: Tauon) -> None:
 					data["album"] = track.album
 					data["progress"] = round(pctl.playing_time * 1000)
 					data["track"] = self.get_track(0, 0, track)
+					data["display_title"] = pctl.get_track_title(track)
 
 				p = pctl.playlist_playing_position
 				data["position"] = p
