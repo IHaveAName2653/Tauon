@@ -726,19 +726,20 @@ def webserve2(pctl: PlayerCtl, album_art_gen: AlbumArt, tauon: Tauon) -> None:
 			# Get all currently queued tracks
 			# This isnt great, but its good enough
 			elif path.startswith("/api1/queued-tracks"):
-				tempArray = []
+				queueArray = []
 				for el in pctl.force_queue:
-					tempDict = {}
-					tempDict["track_id"] = el.track_id
-					tempDict["position"] = el.position
-					tempDict["playlist_id"] = el.playlist_id
-					tempDict["type"] = el.type
-					tempDict["album_stage"] = el.album_stage
-					tempDict["uuid_int"] = el.uuid_int
-					tempArray.append(tempDict)
+					queueArray.append({
+						"track_id": el.track_id,
+						"position": el.position,
+						"playlist_id": el.playlist_id,
+						"track": self.get_track(el.position, tauon.id_to_pl(el.playlist_id)),
+						"type": el.type,
+						"album_stage": el.album_stage,
+						"uuid_int": el.uuid_int,
+					})
 				
 				data = {}
-				data["queue"] = tempArray
+				data["queue"] = queueArray
 
 				self.send_response(200)
 				self.send_header("Content-type", "application/json")
