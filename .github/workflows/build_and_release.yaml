@@ -2,8 +2,11 @@ name: Build and release
 
 on:
   push:
+    paths-ignore:
+      - 'locale/**'
   pull_request:
-
+    paths-ignore:
+      - 'locale/**'
 jobs:
   build-linux-arm64:
     name: "Linux arm64"
@@ -17,7 +20,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v7
         with:
-          python-version: '3.14'
+          python-version: '3.15'
           cache: 'pip'
 
       - name: Install deps
@@ -41,6 +44,7 @@ jobs:
             libdbus-1-dev \
             libjxl-dev \
             libflac-dev \
+            libchromaprint-dev \
             libgme-dev \
             libmpg123-dev \
             libopenmpt-dev \
@@ -129,7 +133,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v7
         with:
-          python-version: '3.14'
+          python-version: '3.15'
           cache: 'pip'
 
       - name: Install deps
@@ -153,6 +157,7 @@ jobs:
             libdbus-1-dev \
             libjxl-dev \
             libflac-dev \
+            libchromaprint-dev \
             libgme-dev \
             libmpg123-dev \
             libopenmpt-dev \
@@ -256,6 +261,9 @@ jobs:
       - name: brew update
         run: brew untap aws/tap && brew update
 
+      - name: Force install openssl@3 to prevent a bug with current images
+        run: brew install --overwrite openssl@3
+
       - name: Install brew dependencies
         run: |
           brew install \
@@ -268,13 +276,14 @@ jobs:
             jpeg-xl \
             libsamplerate \
             ffmpeg \
+            chromaprint \
             librsvg \
             opusfile \
             libopenmpt \
             wavpack \
             game-music-emu \
             create-dmg \
-            Python@3.14
+            Python@3.15
 
       - name: Remove aws-sam-cli as it makes pydantic core preinstalled in brew but we want to use pip's
         run: brew uninstall aws-sam-cli pydantic
