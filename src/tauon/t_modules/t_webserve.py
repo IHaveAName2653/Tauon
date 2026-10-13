@@ -865,17 +865,23 @@ def webserve2(pctl: PlayerCtl, album_art_gen: AlbumArt, tauon: Tauon) -> None:
 					self.wfile.write(b"Invalid parameter")
 
 			elif path.startswith("/api1/queued-tracks"):
+				_, args = self.parse_trail(path)
+				provideFullData = args.get("full") is not None
 				queueArray = []
 				for el in pctl.force_queue:
-					queueArray.append({
+					queueData: Any = {
 						"track_id": el.track_id,
 						"position": el.position,
 						"playlist_id": el.playlist_id,
-						"track": self.get_track(el.position, tauon.id_to_pl(el.playlist_id)),
 						"type": el.type,
 						"album_stage": el.album_stage,
 						"uuid_int": el.uuid_int,
-					})
+					}
+					if provideFullData:
+						queueData["track"] = self.get_track(el.position, tauon.id_to_pl(el.playlist_id))
+						
+					queueArray.append(queueData)
+
 				
 				data = {}
 				data["queue"] = queueArray
