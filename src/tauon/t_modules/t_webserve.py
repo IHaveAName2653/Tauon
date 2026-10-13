@@ -41,6 +41,7 @@ from urllib3.exceptions import HTTPError as Urllib3HTTPError
 from tauon.t_modules.t_cast_audio import audio_mime_type
 from tauon.t_modules.t_enums import Backend, PlayingState, StopMode, QueueType
 from tauon.t_modules.t_extra import Timer, TauonQueueItem
+from tauon.t_modules.t_playlist_folders import PlaylistFolder
 
 try:
 	from zeroconf import ServiceInfo, Zeroconf
@@ -895,11 +896,10 @@ def webserve2(pctl: PlayerCtl, album_art_gen: AlbumArt, tauon: Tauon) -> None:
 			elif path.startswith("/api1/queue-track"):
 				_, args = self.parse_trail(path)
 
-				uuid = random.randrange(1, 100000000)
 				# allow the web request to define a uuid, some may want to for some reason
 				uuid_arg = args.get("uuid")
-				if uuid_arg is not None:
-					uuid = int(uuid)
+
+				uuid = int(uuid_arg) if uuid_arg is not None else random.randrange(1, 100000000)
 
 				pctl.force_queue.append(TauonQueueItem(int(args["track_id"]), int(args["position"]), int(args["playlist_id"]), QueueType.TRACK, 0, uuid, False))
 
@@ -913,16 +913,17 @@ def webserve2(pctl: PlayerCtl, album_art_gen: AlbumArt, tauon: Tauon) -> None:
 			elif path.startswith("/api1/queue-remove"):
 				_, args = self.parse_trail(path)
 
+				uuid = args.get("uuid")
+				uuid_int = int(uuid) if uuid is not None else 0
+				trackid = args.get("track_id")
+				trackid_int = int(trackid) if trackid is not None else 0
+
 				for item in pctl.force_queue:
 					shouldRemove = False
-					uuid = args.get("uuid")
-					if uuid is not None:
-						if item.uuid_int == int(uuid):
-							shouldRemove = True
-					trackid = args.get("track_id")
-					if trackid is not None:
-						if item.track_id == int(trackid):
-							shouldRemove = True
+					if uuid is not None and item.uuid_int == uuid_int:
+						shouldRemove = True
+					if trackid is not None and item.track_id == trackid_int:
+						shouldRemove = True
 
 					if shouldRemove:
 						pctl.force_queue.remove(item)
@@ -1094,6 +1095,38 @@ def webserve2(pctl: PlayerCtl, album_art_gen: AlbumArt, tauon: Tauon) -> None:
 					p["count"] = len(item.playlist_ids)
 					l.append(p)
 				data = {"playlists": l}
+				self.send_response(200)
+				self.send_header("Content-type", "application/json")
+				self.end_headers()
+				data = json.dumps(data).encode()
+				self.wfile.write(data)
+
+			elif path == "/api1/playlist-folders":
+
+				def folder_walk(pl: PlaylistFolder):
+					result: dict[str, Any] = {}
+					result["uuid"] = pl.uuid_int
+					result["title"] = pl.title
+					result["color"] = pl.colour
+					playlists = []
+					subfolders = []
+					for item in pl.children:
+						if type(item) is PlaylistFolder:
+							subfolders.append(folder_walk(item))
+						else:
+							playlists.append(item)
+					if len(subfolders) > 0:
+						result["subfolders"] = subfolders
+					if len(playlists) > 0:
+						result["playlists"] = playlists
+
+					return result
+
+				plf = pctl.playlist_folders
+				l = []
+				for item in plf.folders():
+					l.append(folder_walk(item))
+				data = {"folders": l}
 				self.send_response(200)
 				self.send_header("Content-type", "application/json")
 				self.end_headers()
