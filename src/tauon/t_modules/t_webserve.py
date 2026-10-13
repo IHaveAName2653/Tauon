@@ -762,6 +762,7 @@ def webserve2(pctl: PlayerCtl, album_art_gen: AlbumArt, tauon: Tauon) -> None:
 			data["path"] = track.fullpath
 			data["album_id"] = album_id
 			data["has_lyrics"] = track.lyrics != ""
+			data["has_synced_lyrics"] = track.synced != ""
 			data["track_number"] = str(track.track_number).lstrip("0")
 			data["can_download"] = not track.is_cue or track.length > 0
 
@@ -845,8 +846,6 @@ def webserve2(pctl: PlayerCtl, album_art_gen: AlbumArt, tauon: Tauon) -> None:
 					self.end_headers()
 					self.wfile.write(b"Invalid parameter")
 
-			# Get synced lyrics if available
-			# Prevents extra api calls to external services, as the lyrics likely already exist
 			elif path.startswith("/api1/synced-lyrics/"):
 				value = path[20:]
 				if value.isdigit() and int(value) in pctl.master_library:
@@ -865,8 +864,6 @@ def webserve2(pctl: PlayerCtl, album_art_gen: AlbumArt, tauon: Tauon) -> None:
 					self.end_headers()
 					self.wfile.write(b"Invalid parameter")
 
-			# Get all currently queued tracks
-			# This isnt great, but its good enough
 			elif path.startswith("/api1/queued-tracks"):
 				queueArray = []
 				for el in pctl.force_queue:
@@ -889,7 +886,6 @@ def webserve2(pctl: PlayerCtl, album_art_gen: AlbumArt, tauon: Tauon) -> None:
 				data = json.dumps(data).encode()
 				self.wfile.write(data)
 
-			# Add a track into the queue
 			elif path.startswith("/api1/queue-track"):
 				_, args = self.parse_trail(path)
 
@@ -907,9 +903,8 @@ def webserve2(pctl: PlayerCtl, album_art_gen: AlbumArt, tauon: Tauon) -> None:
 
 				self.wfile.write(b"OK")
 
-			# Allow removing from the queue by uuid or track id, allowing for full remote queue management
-			# This is just not good, mostly because i have no idea what im doing / how python would be able to do this better
-			elif path.startswith("/api1/remove-queue-track"):
+			
+			elif path.startswith("/api1/queue-remove"):
 				_, args = self.parse_trail(path)
 
 				for item in pctl.force_queue:
